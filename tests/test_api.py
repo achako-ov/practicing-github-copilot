@@ -24,43 +24,64 @@ def client():
 
 
 def test_root_redirects_to_static_index(client):
-    response = client.get("/", follow_redirects=False)
+    # Arrange
+    url = "/"
+    expected_location = "/static/index.html"
 
+    # Act
+    response = client.get(url, follow_redirects=False)
+
+    # Assert
     assert response.status_code == 307
-    assert response.headers["location"] == "/static/index.html"
+    assert response.headers["location"] == expected_location
 
 
 def test_get_activities_returns_activity_catalog(client):
-    response = client.get("/activities")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert "Chess Club" in payload
-    assert payload["Chess Club"]["participants"] == [
+    # Arrange
+    url = "/activities"
+    expected_activity = "Chess Club"
+    expected_participants = [
         "michael@mergington.edu",
         "daniel@mergington.edu",
     ]
 
+    # Act
+    response = client.get(url)
+
+    # Assert
+    assert response.status_code == 200
+    payload = response.json()
+    assert expected_activity in payload
+    assert payload[expected_activity]["participants"] == expected_participants
+
 
 def test_signup_for_activity_adds_participant(client):
-    response = client.post(
-        f"/activities/{quote('Chess Club', safe='')}/signup",
-        params={"email": "newstudent@mergington.edu"},
-    )
+    # Arrange
+    activity_name = "Chess Club"
+    signup_url = f"/activities/{quote(activity_name, safe='')}/signup"
+    signup_params = {"email": "newstudent@mergington.edu"}
 
+    # Act
+    response = client.post(signup_url, params=signup_params)
+
+    # Assert
     assert response.status_code == 200
     assert response.json() == {
-        "message": "Signed up newstudent@mergington.edu for Chess Club"
+        "message": f"Signed up {signup_params['email']} for {activity_name}"
     }
-    assert "newstudent@mergington.edu" in activities["Chess Club"]["participants"]
+    assert signup_params["email"] in activities[activity_name]["participants"]
 
 
 def test_duplicate_signup_is_rejected(client):
-    response = client.post(
-        f"/activities/{quote('Chess Club', safe='')}/signup",
-        params={"email": "michael@mergington.edu"},
-    )
+    # Arrange
+    activity_name = "Chess Club"
+    signup_url = f"/activities/{quote(activity_name, safe='')}/signup"
+    signup_params = {"email": "michael@mergington.edu"}
 
+    # Act
+    response = client.post(signup_url, params=signup_params)
+
+    # Assert
     assert response.status_code == 400
     assert response.json() == {
         "detail": "Student is already signed up for this activity"
@@ -68,12 +89,19 @@ def test_duplicate_signup_is_rejected(client):
 
 
 def test_remove_participant_removes_student(client):
-    response = client.delete(
-        f"/activities/{quote('Chess Club', safe='')}/participants/michael@mergington.edu"
+    # Arrange
+    activity_name = "Chess Club"
+    participant_email = "michael@mergington.edu"
+    delete_url = (
+        f"/activities/{quote(activity_name, safe='')}/participants/{participant_email}"
     )
 
+    # Act
+    response = client.delete(delete_url)
+
+    # Assert
     assert response.status_code == 200
     assert response.json() == {
-        "message": "Removed michael@mergington.edu from Chess Club"
+        "message": f"Removed {participant_email} from {activity_name}"
     }
-    assert "michael@mergington.edu" not in activities["Chess Club"]["participants"]
+    assert participant_email not in activities[activity_name]["participants"]
